@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Pomodoro App</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background-color: black;
+      background-size: cover;
+      background-position: center;
+      color: white;
+      text-align: center;
+      padding: 20px;
+      transition: background-image 0.5s;
+    }
+    #timer {
+      font-size: 60px;
+      font-weight: bold;
+      margin: 20px 0;
+    }
+    button, select, input[type="number"], input[type="file"] {
+      margin: 5px;
+      padding: 10px;
+      font-size: 16px;
+      border-radius: 6px;
+      border: none;
+    }
+    #quote {
+      font-style: italic;
+      margin-top: 20px;
+      max-width: 600px;
+      margin-inline: auto;
+    }
+    #settings {
+      display: none;
+      background-color: rgba(0,0,0,0.8);
+      padding: 15px;
+      margin-top: 20px;
+      border-radius: 10px;
+    }
+    #gear {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      font-size: 30px;
+      cursor: pointer;
+    }
+    #tasks {
+      margin-top: 20px;
+    }
+    #taskList li {
+      list-style: none;
+      background: rgba(255,255,255,0.1);
+      margin: 5px;
+      padding: 5px;
+      border-radius: 5px;
+    }
+    #tracker {
+      margin-top: 15px;
+      font-size: 18px;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="gear" onclick="toggleSettings()">⚙️</div>
+
+  <h1>Pomodoro Timer</h1>
+  <div id="timer">25:00</div>
+
+  <div>
+    <button onclick="toggleTimer()">Start / Pause</button>
+    <button onclick="resetTimer()">Reset</button>
+  </div>
+
+  <div id="quote"></div>
+
+  <div id="tracker">
+    Sessions: <span id="sessions">0</span> |
+    Hours Studied: <span id="hours">0</span>
+  </div>
+
+  <div id="tasks">
+    <h3>Tasks</h3>
+    <input type="text" id="taskInput" placeholder="New task" />
+    <button onclick="addTask()">Add</button>
+    <ul id="taskList"></ul>
+  </div>
+
+  <div id="settings">
+    <h3>Settings</h3>
+    <label>Work (min): <input type="number" id="workInput" value="25" /></label><br/>
+    <label>Short Break (min): <input type="number" id="shortInput" value="5" /></label><br/>
+    <label>Long Break (min): <input type="number" id="longInput" value="15" /></label><br/><br/>
+
+    <label>Sound:
+      <select id="soundSelect">
+        <option value="chime">Chime</option>
+        <option value="bell">Bell</option>
+      </select>
+    </label><br/><br/>
+
+    <label>Background:
+      <select id="bgSelect" onchange="changeBackground(this.value)">
+        <option value="">None</option>
+        <option value="https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1400">Cozy Room</option>
+        <option value="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1400">Ocean</option>
+      </select>
+    </label><br/>
+    <label>Upload Background:
+      <input type="file" id="bgUpload" accept="image/*" />
+    </label>
+  </div>
+
+  <audio id="chime" src="chime.mp3" preload="auto"></audio>
+  <audio id="bell" src="bell.mp3" preload="auto"></audio>
+
+  <script>
+    let timer;
+    let isRunning = false;
+    let currentMode = "work";
+    let timeLeft = 25 * 60;
+    let sessions = 0;
+    let totalSeconds = 0;
+
+    const quotes = [
+      "“Success usually comes to those who are too busy to be looking for it.” – Henry David Thoreau",
+      "“Don’t watch the clock; do what it does. Keep going.” – Sam Levenson",
+      "“The way to get started is to quit talking and begin doing.” – Walt Disney",
+      "“It always seems impossible until it’s done.” – Nelson Mandela",
+      "“Your time is limited, so don’t waste it living someone else’s life.” – Steve Jobs"
+    ];
+
+    function updateTimerDisplay() {
+      const minutes = Math.floor(timeLeft / 60).toString().padStart(2, '0');
+      const seconds = (timeLeft % 60).toString().padStart(2, '0');
+      document.getElementById("timer").textContent = `${minutes}:${seconds}`;
+    }
+
+    function toggleTimer() {
+      if (isRunning) {
+        clearInterval(timer);
+      } else {
+        timer = setInterval(() => {
+          if (timeLeft > 0) {
+            timeLeft--;
+            totalSeconds++;
+            updateTimerDisplay();
+          } else {
+            clearInterval(timer);
+            playSound();
+            if (currentMode === "work") {
+              sessions++;
+              document.getElementById("sessions").textContent = sessions;
+              document.getElementById("hours").textContent = (totalSeconds / 3600).toFixed(2);
+              currentMode = "short";
+              timeLeft = parseInt(document.getElementById("shortInput").value) * 60;
+            } else {
+              currentMode = "work";
+              timeLeft = parseInt(document.getElementById("workInput").value) * 60;
+            }
+            showQuote();
+            updateTimerDisplay();
+            toggleTimer(); // Auto-restart
+          }
+        }, 1000);
+      }
+      isRunning = !isRunning;
+    }
+
+    function resetTimer() {
+      clearInterval(timer);
+      isRunning = false;
+      if (currentMode === "work") {
+        timeLeft = parseInt(document.getElementById("workInput").value) * 60;
+      } else {
+        timeLeft = parseInt(document.getElementById(currentMode === "short" ? "shortInput" : "longInput").value) * 60;
+      }
+      updateTimerDisplay();
+    }
+
+    function showQuote() {
+      const quote = quotes[Math.floor(Math.random() * quotes.length)];
+      document.getElementById("quote").textContent = quote;
+    }
+
+    function toggleSettings() {
+      const settings = document.getElementById("settings");
+      settings.style.display = settings.style.display === "none" ? "block" : "none";
+    }
+
+    function playSound() {
+      const soundId = document.getElementById("soundSelect").value;
+      document.getElementById(soundId).play();
+    }
+
+    function changeBackground(url) {
+      if (url) document.body.style.backgroundImage = `url(${url})`;
+    }
+
+    document.getElementById("bgUpload").addEventListener("change", function (e) {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function (event) {
+          document.body.style.backgroundImage = `url(${event.target.result})`;
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+
+    function addTask() {
+      const input = document.getElementById("taskInput");
+      if (input.value.trim()) {
+        const li = document.createElement("li");
+        li.textContent = input.value;
+        li.onclick = () => li.remove();
+        document.getElementById("taskList").appendChild(li);
+        input.value = "";
+      }
+    }
+
+    // Initialize
+    updateTimerDisplay();
+    showQuote();
+  </script>
+</body>
+</html>
